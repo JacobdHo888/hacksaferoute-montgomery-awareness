@@ -1,0 +1,7 @@
+{
+  "name": "SafeRoute Montgomery",
+  "description": "AI-powered safety-aware navigation for smarter public travel decisions in Montgomery, Alabama.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
