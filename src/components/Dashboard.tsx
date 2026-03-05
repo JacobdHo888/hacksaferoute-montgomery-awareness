@@ -12,7 +12,9 @@ import { getSafetyExplanation } from '../services/gemini';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '../lib/utils';
 import SafetyTrends from './SafetyTrends';
+import NeighborhoodSnapshot from './NeighborhoodSnapshot';
 import { geocode, getRoute, getAlternativeRoute, RouteData } from '../services/navigation';
+import { BookOpen, HelpCircle, CheckCircle2 } from 'lucide-react';
 
 // Mock Data for Routes
 const MOCK_ROUTES_BASE = [
@@ -112,7 +114,8 @@ export default function Dashboard() {
   const [aiExplanation, setAiExplanation] = useState<string | null>(null);
   const [isLoadingAi, setIsLoadingAi] = useState(false);
   const [focusedLocation, setFocusedLocation] = useState<[number, number] | null>(null);
-  const [activeTab, setActiveTab] = useState<'insight' | 'trends'>('insight');
+  const [selectedNeighborhood, setSelectedNeighborhood] = useState<[number, number] | null>(null);
+  const [activeTab, setActiveTab] = useState<'insight' | 'trends' | 'guide'>('insight');
   const [dynamicRoutes, setDynamicRoutes] = useState<RouteData[]>([]);
   const [mapCenter, setMapCenter] = useState<[number, number]>([32.3668, -86.3000]);
   const [layers, setLayers] = useState({
@@ -464,7 +467,17 @@ export default function Dashboard() {
           layers={layers}
           alerts={MOCK_ALERTS}
           focusedLocation={focusedLocation}
+          onMapClick={(latlng) => setSelectedNeighborhood(latlng)}
         />
+
+        <AnimatePresence>
+          {selectedNeighborhood && (
+            <NeighborhoodSnapshot 
+              location={selectedNeighborhood} 
+              onClose={() => setSelectedNeighborhood(null)} 
+            />
+          )}
+        </AnimatePresence>
 
         {/* Floating Header */}
         <div className="absolute top-6 left-6 right-6 flex justify-between items-start pointer-events-none z-[1000]">
@@ -581,6 +594,16 @@ export default function Dashboard() {
               <Activity className="w-3 h-3" />
               City Trends
             </button>
+            <button 
+              onClick={() => setActiveTab('guide')}
+              className={cn(
+                "flex-1 py-2 px-3 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-2",
+                activeTab === 'guide' ? "bg-white text-civic-blue shadow-sm" : "text-slate-500 hover:text-slate-700"
+              )}
+            >
+              <BookOpen className="w-3 h-3" />
+              Guide
+            </button>
           </div>
         </div>
 
@@ -602,8 +625,56 @@ export default function Dashboard() {
                 </div>
               </div>
             )
-          ) : (
+          ) : activeTab === 'trends' ? (
             <SafetyTrends />
+          ) : (
+            <div className="space-y-8">
+              <section>
+                <div className="flex items-center gap-2 mb-4">
+                  <HelpCircle className="w-4 h-4 text-civic-blue" />
+                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">How SafeRoute Works</h4>
+                </div>
+                <p className="text-[11px] text-slate-600 leading-relaxed mb-6">
+                  SafeRoute Montgomery is an AI-powered safety companion designed to help you navigate the city with confidence. We combine real-time incident data, weather alerts, and emergency resource proximity to calculate the safest possible path for your journey.
+                </p>
+
+                <div className="space-y-4">
+                  {[
+                    { title: 'Search & Route', desc: 'Enter your destination or use "My Location" to generate safe routing options.' },
+                    { title: 'Analyze Safety', desc: 'Review the Safety Score and AI-generated insights for each route option.' },
+                    { title: 'Explore Map', desc: 'Click any area on the map to see a real-time Neighborhood Safety Snapshot.' },
+                    { title: 'Emergency Actions', desc: 'Use the Quick Actions panel for immediate access to 911 or nearest resources.' }
+                  ].map((step, i) => (
+                    <div key={i} className="flex gap-3">
+                      <div className="w-5 h-5 rounded-full bg-blue-50 flex items-center justify-center shrink-0 text-[10px] font-bold text-civic-blue border border-blue-100">
+                        {i + 1}
+                      </div>
+                      <div>
+                        <div className="text-[11px] font-bold text-slate-900 mb-0.5">{step.title}</div>
+                        <p className="text-[10px] text-slate-500 leading-tight">{step.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <div className="flex items-center gap-2 mb-3">
+                  <CheckCircle2 className="w-4 h-4 text-safety-green" />
+                  <h4 className="text-[10px] font-bold text-slate-900 uppercase tracking-widest">SafeAlert Guide</h4>
+                </div>
+                <div className="space-y-3">
+                  <div className="p-2 bg-white rounded-lg border border-slate-200">
+                    <div className="text-[10px] font-bold text-slate-700 mb-1">911 Integration</div>
+                    <p className="text-[9px] text-slate-500 leading-tight">Our SafeAlert system monitors active 911 calls to provide up-to-the-minute hazard warnings on your route.</p>
+                  </div>
+                  <div className="p-2 bg-white rounded-lg border border-slate-200">
+                    <div className="text-[10px] font-bold text-slate-700 mb-1">Community Resources</div>
+                    <p className="text-[9px] text-slate-500 leading-tight">Find shelters and medical centers instantly during severe weather or emergencies.</p>
+                  </div>
+                </div>
+              </section>
+            </div>
           )}
         </div>
 

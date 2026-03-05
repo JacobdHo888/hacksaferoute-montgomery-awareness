@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { cn } from '../lib/utils';
@@ -30,6 +30,18 @@ interface MapViewProps {
   };
   alerts?: any[];
   focusedLocation?: [number, number] | null;
+  onMapClick?: (latlng: [number, number]) => void;
+}
+
+function MapEvents({ onMapClick }: { onMapClick?: (latlng: [number, number]) => void }) {
+  useMapEvents({
+    click: (e) => {
+      if (onMapClick) {
+        onMapClick([e.latlng.lat, e.latlng.lng]);
+      }
+    },
+  });
+  return null;
 }
 
 function ChangeView({ center, focusedLocation }: { center: [number, number], focusedLocation?: [number, number] | null }) {
@@ -46,7 +58,7 @@ function ChangeView({ center, focusedLocation }: { center: [number, number], foc
   return null;
 }
 
-export default function MapView({ center, routes, selectedRouteIndex, layers, alerts = [], focusedLocation }: MapViewProps) {
+export default function MapView({ center, routes, selectedRouteIndex, layers, alerts = [], focusedLocation, onMapClick }: MapViewProps) {
   // Mock data for layers
   const [crimePoints] = useState([
     { pos: [32.3668, -86.3000], type: 'Theft' },
@@ -70,6 +82,7 @@ export default function MapView({ center, routes, selectedRouteIndex, layers, al
         scrollWheelZoom={true}
         className="z-0"
       >
+        <MapEvents onMapClick={onMapClick} />
         <ChangeView center={center} focusedLocation={focusedLocation} />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
