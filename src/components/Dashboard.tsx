@@ -44,6 +44,44 @@ const MOCK_ROUTES = [
   }
 ];
 
+export type AlertType = 'weather' | '911' | 'flood';
+
+export interface SafetyAlert {
+  id: string;
+  type: AlertType;
+  title: string;
+  description: string;
+  location: [number, number];
+  timestamp: string;
+}
+
+const MOCK_ALERTS: SafetyAlert[] = [
+  {
+    id: 'a1',
+    type: 'weather',
+    title: 'Flash Flood Warning',
+    description: 'Heavy rainfall expected in North Montgomery. Avoid low-lying areas.',
+    location: [32.3850, -86.3200],
+    timestamp: '10 min ago'
+  },
+  {
+    id: 'a2',
+    type: '911',
+    title: 'Medical Emergency',
+    description: 'Active response near Court St. Expect minor delays.',
+    location: [32.3720, -86.2850],
+    timestamp: '5 min ago'
+  },
+  {
+    id: 'a3',
+    type: 'flood',
+    title: 'High Water Alert',
+    description: 'Water over roadway reported near Alabama River pkwy.',
+    location: [32.3550, -86.3100],
+    timestamp: '25 min ago'
+  }
+];
+
 export default function Dashboard() {
   const [start, setStart] = useState('My Location');
   const [dest, setDest] = useState('Baptist Medical Center South');
@@ -122,52 +160,91 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          <div className="text-[10px] font-bold uppercase text-slate-400 tracking-widest px-2">Route Options</div>
-          {MOCK_ROUTES.map((route, idx) => (
-            <button 
-              key={route.id}
-              onClick={() => setSelectedRouteIdx(idx)}
-              className={cn(
-                "w-full text-left p-4 rounded-2xl border transition-all relative overflow-hidden group",
-                selectedRouteIdx === idx 
-                  ? "bg-blue-50/50 border-civic-blue shadow-sm" 
-                  : "bg-white border-slate-100 hover:border-slate-300"
-              )}
-            >
-              {route.recommended && (
-                <div className="absolute top-0 right-0 bg-civic-blue text-white text-[8px] font-bold px-2 py-0.5 rounded-bl-lg uppercase tracking-tighter">
-                  Recommended
+        <div className="flex-1 overflow-y-auto p-4 space-y-6">
+          <section>
+            <div className="text-[10px] font-bold uppercase text-slate-400 tracking-widest px-2 mb-3">Route Options</div>
+            <div className="space-y-3">
+              {MOCK_ROUTES.map((route, idx) => (
+                <button 
+                  key={route.id}
+                  onClick={() => setSelectedRouteIdx(idx)}
+                  className={cn(
+                    "w-full text-left p-4 rounded-2xl border transition-all relative overflow-hidden group",
+                    selectedRouteIdx === idx 
+                      ? "bg-blue-50/50 border-civic-blue shadow-sm" 
+                      : "bg-white border-slate-100 hover:border-slate-300"
+                  )}
+                >
+                  {route.recommended && (
+                    <div className="absolute top-0 right-0 bg-civic-blue text-white text-[8px] font-bold px-2 py-0.5 rounded-bl-lg uppercase tracking-tighter">
+                      Recommended
+                    </div>
+                  )}
+                  <div className="flex justify-between items-start mb-2">
+                    <h4 className="font-bold text-slate-900 text-sm">{route.name}</h4>
+                    <div className={cn(
+                      "px-2 py-0.5 rounded-full text-[10px] font-bold",
+                      route.score > 80 ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
+                    )}>
+                      {route.score}/100
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-slate-500 mb-3">
+                    <div className="flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {route.time}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <TrendingUp className="w-3 h-3" />
+                      {route.score > 80 ? 'High Safety' : 'Moderate Safety'}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {route.risks.map((risk, i) => (
+                      <span key={i} className="text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200">
+                        {risk}
+                      </span>
+                    ))}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section>
+            <div className="text-[10px] font-bold uppercase text-slate-400 tracking-widest px-2 mb-3 flex items-center justify-between">
+              <span>Active Safety Alerts</span>
+              <span className="bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full text-[8px] animate-pulse">Live</span>
+            </div>
+            <div className="space-y-3">
+              {MOCK_ALERTS.map((alert) => (
+                <div 
+                  key={alert.id}
+                  className="bg-white border border-slate-100 p-3 rounded-xl shadow-sm hover:shadow-md transition-shadow"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={cn(
+                      "p-2 rounded-lg shrink-0",
+                      alert.type === 'weather' ? "bg-amber-50 text-amber-600" :
+                      alert.type === '911' ? "bg-red-50 text-red-600" :
+                      "bg-blue-50 text-blue-600"
+                    )}>
+                      {alert.type === 'weather' ? <CloudRain className="w-4 h-4" /> :
+                       alert.type === '911' ? <AlertTriangle className="w-4 h-4" /> :
+                       <Wind className="w-4 h-4" />}
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <h5 className="text-xs font-bold text-slate-900">{alert.title}</h5>
+                        <span className="text-[9px] text-slate-400">{alert.timestamp}</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 leading-tight">{alert.description}</p>
+                    </div>
+                  </div>
                 </div>
-              )}
-              <div className="flex justify-between items-start mb-2">
-                <h4 className="font-bold text-slate-900 text-sm">{route.name}</h4>
-                <div className={cn(
-                  "px-2 py-0.5 rounded-full text-[10px] font-bold",
-                  route.score > 80 ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"
-                )}>
-                  {route.score}/100
-                </div>
-              </div>
-              <div className="flex items-center gap-3 text-xs text-slate-500 mb-3">
-                <div className="flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  {route.time}
-                </div>
-                <div className="flex items-center gap-1">
-                  <TrendingUp className="w-3 h-3" />
-                  {route.score > 80 ? 'High Safety' : 'Moderate Safety'}
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {route.risks.map((risk, i) => (
-                  <span key={i} className="text-[9px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200">
-                    {risk}
-                  </span>
-                ))}
-              </div>
-            </button>
-          ))}
+              ))}
+            </div>
+          </section>
         </div>
 
         {/* Safety Layer Toggles */}
@@ -209,6 +286,7 @@ export default function Dashboard() {
           routes={MOCK_ROUTES} 
           selectedRouteIndex={selectedRouteIdx}
           layers={layers}
+          alerts={MOCK_ALERTS}
         />
 
         {/* Floating Header */}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { cn } from '../lib/utils';
 
 // Fix for default marker icons in Leaflet
 const markerIcon = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png';
@@ -27,6 +28,7 @@ interface MapViewProps {
     flood: boolean;
     resources: boolean;
   };
+  alerts?: any[];
 }
 
 function ChangeView({ center }: { center: [number, number] }) {
@@ -35,7 +37,7 @@ function ChangeView({ center }: { center: [number, number] }) {
   return null;
 }
 
-export default function MapView({ center, routes, selectedRouteIndex, layers }: MapViewProps) {
+export default function MapView({ center, routes, selectedRouteIndex, layers, alerts = [] }: MapViewProps) {
   // Mock data for layers
   const [crimePoints] = useState([
     { pos: [32.3668, -86.3000], type: 'Theft' },
@@ -94,6 +96,34 @@ export default function MapView({ center, routes, selectedRouteIndex, layers }: 
           </Marker>
         ))}
 
+        {/* Safety Alerts Layer */}
+        {alerts.map((alert) => (
+          <Marker 
+            key={alert.id} 
+            position={alert.location} 
+            icon={L.divIcon({
+              className: cn(
+                'rounded-full w-10 h-10 flex items-center justify-center shadow-xl border-2 border-white animate-bounce',
+                alert.type === 'weather' ? 'bg-amber-500' :
+                alert.type === '911' ? 'bg-red-600' : 'bg-blue-600'
+              ),
+              html: `<div class="text-white">${
+                alert.type === 'weather' ? '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="M16 14v6"/><path d="M8 14v6"/><path d="M12 16v6"/></svg>' :
+                alert.type === '911' ? '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>' :
+                '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.7 7.7a2.5 2.5 0 1 1 3.5 3.5L12 20.2l-9.2-9a2.5 2.5 0 1 1 3.5-3.5L12 13.2l5.7-5.5z"/></svg>'
+              }</div>`
+            })}
+          >
+            <Popup>
+              <div className="p-1">
+                <div className="font-bold text-sm mb-1">{alert.title}</div>
+                <div className="text-xs text-slate-600">{alert.description}</div>
+                <div className="text-[10px] text-slate-400 mt-2">{alert.timestamp}</div>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+
         {/* Markers for Start/End of selected route */}
         {routes[selectedRouteIndex] && (
           <>
@@ -118,6 +148,10 @@ export default function MapView({ center, routes, selectedRouteIndex, layers }: 
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-lg bg-blue-500" />
             <span>Emergency Resource</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-amber-500 animate-pulse" />
+            <span>Active Safety Alert</span>
           </div>
         </div>
       </div>
