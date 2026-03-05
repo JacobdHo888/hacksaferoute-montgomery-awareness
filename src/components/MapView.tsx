@@ -29,6 +29,7 @@ interface MapViewProps {
     resources: boolean;
   };
   alerts?: any[];
+  userLocation?: [number, number];
 }
 
 function ChangeView({ center }: { center: [number, number] }) {
@@ -37,7 +38,7 @@ function ChangeView({ center }: { center: [number, number] }) {
   return null;
 }
 
-export default function MapView({ center, routes, selectedRouteIndex, layers, alerts = [] }: MapViewProps) {
+export default function MapView({ center, routes, selectedRouteIndex, layers, alerts = [], userLocation }: MapViewProps) {
   // Mock data for layers
   const [crimePoints] = useState([
     { pos: [32.3668, -86.3000], type: 'Theft' },
@@ -123,6 +124,19 @@ export default function MapView({ center, routes, selectedRouteIndex, layers, al
             </Popup>
           </Marker>
         ))}
+
+        {/* User Location Marker */}
+        {userLocation && (
+          <Marker position={userLocation} icon={L.divIcon({
+            className: 'relative flex h-6 w-6',
+            html: `
+              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+              <span class="relative inline-flex rounded-full h-6 w-6 bg-blue-600 border-2 border-white shadow-lg"></span>
+            `
+          })}>
+            <Popup>You are here</Popup>
+          </Marker>
+        )}
 
         {/* Markers for Start/End of selected route */}
         {routes[selectedRouteIndex] && (

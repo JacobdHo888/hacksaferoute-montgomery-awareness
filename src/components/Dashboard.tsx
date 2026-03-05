@@ -12,12 +12,11 @@ import ReactMarkdown from 'react-markdown';
 import { cn } from '../lib/utils';
 
 // Mock Data for Routes
-const MOCK_ROUTES = [
+const MOCK_ROUTES_BASE = [
   {
     id: 'r1',
     name: 'Standard Route',
     time: '12 min',
-    score: 72,
     recommended: false,
     risks: ['Moderate 911 Activity', 'Construction'],
     path: [
@@ -25,13 +24,18 @@ const MOCK_ROUTES = [
       [32.3700, -86.2950],
       [32.3750, -86.2900],
       [32.3792, -86.3077]
-    ]
+    ],
+    baseRisks: {
+      crime: 45,
+      weather: 20,
+      flood: 10,
+      emergency: 40
+    }
   },
   {
     id: 'r2',
     name: 'SafeRoute Recommended',
     time: '15 min',
-    score: 94,
     recommended: true,
     risks: ['Low Incident Density'],
     path: [
@@ -40,7 +44,13 @@ const MOCK_ROUTES = [
       [32.3650, -86.3200],
       [32.3750, -86.3150],
       [32.3792, -86.3077]
-    ]
+    ],
+    baseRisks: {
+      crime: 10,
+      weather: 15,
+      flood: 5,
+      emergency: 85
+    }
   }
 ];
 
@@ -97,13 +107,37 @@ export default function Dashboard() {
     resources: true
   });
 
+  const [weights, setWeights] = useState({
+    crime: 40,
+    weather: 20,
+    flood: 20,
+    emergency: 20
+  });
+
+  const calculateScore = (baseRisks: any) => {
+    const totalWeight = weights.crime + weights.weather + weights.flood + weights.emergency;
+    if (totalWeight === 0) return 0;
+
+    const crimeScore = (100 - baseRisks.crime) * (weights.crime / totalWeight);
+    const weatherScore = (100 - baseRisks.weather) * (weights.weather / totalWeight);
+    const floodScore = (100 - baseRisks.flood) * (weights.flood / totalWeight);
+    const emergencyScore = baseRisks.emergency * (weights.emergency / totalWeight);
+
+    return Math.round(crimeScore + weatherScore + floodScore + emergencyScore);
+  };
+
+  const routes = MOCK_ROUTES_BASE.map(route => ({
+    ...route,
+    score: calculateScore(route.baseRisks)
+  }));
+
   const handleSearch = async () => {
     setIsSearching(true);
     setIsLoadingAi(true);
     // Simulate API delay
     await new Promise(r => setTimeout(r, 1500));
     
-    const explanation = await getSafetyExplanation(MOCK_ROUTES[selectedRouteIdx]);
+    const explanation = await getSafetyExplanation(routes[selectedRouteIdx]);
     setAiExplanation(explanation || "No explanation available.");
     setIsLoadingAi(false);
     setIsSearching(false);
@@ -164,7 +198,7 @@ export default function Dashboard() {
           <section>
             <div className="text-[10px] font-bold uppercase text-slate-400 tracking-widest px-2 mb-3">Route Options</div>
             <div className="space-y-3">
-              {MOCK_ROUTES.map((route, idx) => (
+              {routes.map((route, idx) => (
                 <button 
                   key={route.id}
                   onClick={() => setSelectedRouteIdx(idx)}
@@ -208,6 +242,42 @@ export default function Dashboard() {
                   </div>
                 </button>
               ))}
+            </div>
+          </section>
+
+          <section>
+            <div className="text-[10px] font-bold uppercase text-slate-400 tracking-widest px-2 mb-3 flex items-center justify-between">
+              <span>Safety Preferences</span>
+              <Sparkles className="w-3 h-3 text-civic-blue" />
+            </div>
+            <div className="bg-white border border-slate-100 p-4 rounded-2xl space-y-4 shadow-sm">
+              {[
+                { id: 'crime', label: 'Crime Risk', icon: <AlertTriangle className="w-3 h-3" /> },
+                { id: 'weather', label: 'Weather Risk', icon: <CloudRain className="w-3 h-3" /> },
+                { id: 'flood', label: 'Flood Risk', icon: <Wind className="w-3 h-3" /> },
+                { id: 'emergency', label: 'Emergency Proximity', icon: <Shield className="w-3 h-3" /> },
+              ].map((pref) => (
+                <div key={pref.id} className="space-y-1.5">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-1.5 text-[10px] font-medium text-slate-600">
+                      {pref.icon}
+                      {pref.label}
+                    </div>
+                    <span className="text-[10px] font-mono text-slate-400">{weights[pref.id as keyof typeof weights]}%</span>
+                  </div>
+                  <input 
+                    type="range" 
+                    min="0" 
+                    max="100" 
+                    value={weights[pref.id as keyof typeof weights]}
+                    onChange={(e) => setWeights(prev => ({ ...prev, [pref.id]: parseInt(e.target.value) }))}
+                    className="w-full h-1 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-civic-blue"
+                  />
+                </div>
+              ))}
+              <div className="pt-2 text-[9px] text-slate-400 italic leading-tight">
+                Adjusting these weights dynamically recalculates route safety scores based on your personal priorities.
+              </div>
             </div>
           </section>
 
@@ -283,7 +353,7 @@ export default function Dashboard() {
       <main className="flex-1 relative">
         <MapView 
           center={[32.3668, -86.3000]} 
-          routes={MOCK_ROUTES} 
+          routes={routes} 
           selectedRouteIndex={selectedRouteIdx}
           layers={layers}
           alerts={MOCK_ALERTS}
@@ -322,19 +392,19 @@ export default function Dashboard() {
             <div className="flex items-end gap-2">
               <span className={cn(
                 "text-5xl font-bold",
-                MOCK_ROUTES[selectedRouteIdx].score > 80 ? "text-safety-green" : "text-safety-yellow"
+                routes[selectedRouteIdx].score > 80 ? "text-safety-green" : "text-safety-yellow"
               )}>
-                {MOCK_ROUTES[selectedRouteIdx].score}
+                {routes[selectedRouteIdx].score}
               </span>
               <span className="text-slate-400 font-bold mb-1">/ 100</span>
             </div>
             <div className="mt-4 h-2 w-full bg-slate-200 rounded-full overflow-hidden">
               <motion.div 
                 initial={{ width: 0 }}
-                animate={{ width: `${MOCK_ROUTES[selectedRouteIdx].score}%` }}
+                animate={{ width: `${routes[selectedRouteIdx].score}%` }}
                 className={cn(
                   "h-full rounded-full",
-                  MOCK_ROUTES[selectedRouteIdx].score > 80 ? "bg-safety-green" : "bg-safety-yellow"
+                  routes[selectedRouteIdx].score > 80 ? "bg-safety-green" : "bg-safety-yellow"
                 )}
               />
             </div>
