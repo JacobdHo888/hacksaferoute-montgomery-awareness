@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { X, Shield, AlertTriangle, Clock, Activity } from 'lucide-react';
+import { X, Shield, AlertTriangle, Clock, Activity, MapPin } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { reverseGeocode } from '../services/navigation';
 import { 
   BarChart, Bar, XAxis, YAxis, 
   CartesianGrid, Tooltip, ResponsiveContainer 
@@ -22,6 +23,19 @@ const RISK_BY_TIME = [
 ];
 
 export default function NeighborhoodSnapshot({ location, onClose }: NeighborhoodSnapshotProps) {
+  const [locationDetails, setLocationDetails] = useState<{ name?: string; address?: string } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDetails = async () => {
+      setIsLoading(true);
+      const details = await reverseGeocode(location[0], location[1]);
+      setLocationDetails(details);
+      setIsLoading(false);
+    };
+    fetchDetails();
+  }, [location]);
+
   // Mock data based on location
   const score = Math.floor(Math.random() * 40) + 50; // 50-90
   
@@ -43,6 +57,28 @@ export default function NeighborhoodSnapshot({ location, onClose }: Neighborhood
       </div>
 
       <div className="p-5 space-y-6">
+        {/* Location Details */}
+        <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+          {isLoading ? (
+            <div className="space-y-2 animate-pulse">
+              <div className="h-3 bg-slate-200 rounded w-1/2" />
+              <div className="h-2 bg-slate-200 rounded w-full" />
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <MapPin className="w-4 h-4 text-civic-blue shrink-0 mt-0.5" />
+              <div>
+                <div className="text-xs font-bold text-slate-900 leading-tight mb-0.5">
+                  {locationDetails?.name || 'Selected Area'}
+                </div>
+                <div className="text-[10px] text-slate-500 leading-tight">
+                  {locationDetails?.address || `${location[0].toFixed(4)}, ${location[1].toFixed(4)}`}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Score Section */}
         <div className="flex items-center justify-between">
           <div>

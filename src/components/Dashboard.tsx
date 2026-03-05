@@ -13,7 +13,8 @@ import ReactMarkdown from 'react-markdown';
 import { cn } from '../lib/utils';
 import SafetyTrends from './SafetyTrends';
 import NeighborhoodSnapshot from './NeighborhoodSnapshot';
-import { geocode, getRoute, getAlternativeRoute, RouteData } from '../services/navigation';
+import { geocode, getRoute, getAlternativeRoute, RouteData, reverseGeocode } from '../services/navigation';
+import { fetchCrimeIncidents, fetch911Calls, fetchEmergencyResources, fetchFloodZones, SafetyIncident, EmergencyResource } from '../services/montgomeryData';
 import { BookOpen, HelpCircle, CheckCircle2 } from 'lucide-react';
 
 // Mock Data for Routes
@@ -118,6 +119,10 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<'insight' | 'trends' | 'guide'>('insight');
   const [dynamicRoutes, setDynamicRoutes] = useState<RouteData[]>([]);
   const [mapCenter, setMapCenter] = useState<[number, number]>([32.3668, -86.3000]);
+  const [liveCrime, setLiveCrime] = useState<SafetyIncident[]>([]);
+  const [liveCalls, setLiveCalls] = useState<SafetyIncident[]>([]);
+  const [liveResources, setLiveResources] = useState<EmergencyResource[]>([]);
+  const [liveFlood, setLiveFlood] = useState<any[]>([]);
   const [layers, setLayers] = useState({
     crime: true,
     calls: false,
@@ -172,8 +177,8 @@ export default function Dashboard() {
       
       if (startCoord && endCoord) {
         const [safe, standard] = await Promise.all([
-          getRoute(startCoord, endCoord),
-          getAlternativeRoute(startCoord, endCoord)
+          getRoute(startCoord, endCoord, liveCrime, liveCalls),
+          getAlternativeRoute(startCoord, endCoord, liveCrime, liveCalls)
         ]);
         
         if (safe && standard) {
@@ -237,13 +242,35 @@ export default function Dashboard() {
     setIsLoadingAi(false);
   };
 
+  const fetchLiveData = async () => {
+    try {
+      const [crime, calls, resources, flood] = await Promise.all([
+        fetchCrimeIncidents(),
+        fetch911Calls(),
+        fetchEmergencyResources(),
+        fetchFloodZones()
+      ]);
+      setLiveCrime(crime);
+      setLiveCalls(calls);
+      setLiveResources(resources);
+      setLiveFlood(flood);
+    } catch (error) {
+      console.error('Error fetching live data:', error);
+    }
+  };
+
   useEffect(() => {
     fetchAiInsight();
   }, [selectedRouteIdx, dynamicRoutes]);
 
   useEffect(() => {
-    // Initial search
+    // Initial search and live data fetch
     handleSearch();
+    fetchLiveData();
+    
+    // Refresh live data every 5 minutes
+    const interval = setInterval(fetchLiveData, 5 * 60 * 1000);
+    return () => clearInterval(interval);
   }, []);
 
   return (
@@ -465,7 +492,17 @@ export default function Dashboard() {
           routes={routes} 
           selectedRouteIndex={selectedRouteIdx}
           layers={layers}
-          alerts={MOCK_ALERTS}
+          alerts={liveCalls.map(c => ({
+            id: c.id,
+            type: '911',
+            title: c.type,
+            description: c.description,
+            location: c.location,
+            timestamp: c.timestamp
+          }))}
+          crimePoints={liveCrime}
+          emergencyResources={liveResources}
+          floodZones={liveFlood}
           focusedLocation={focusedLocation}
           onMapClick={(latlng) => setSelectedNeighborhood(latlng)}
         />

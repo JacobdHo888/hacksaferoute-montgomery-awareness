@@ -3,6 +3,8 @@
  * Uses OpenStreetMap (Nominatim) for Geocoding and OSRM for Routing
  */
 
+import { SafetyIncident } from './montgomeryData';
+
 export interface Coordinate {
   lat: number;
   lng: number;
@@ -54,7 +56,12 @@ export async function geocode(address: string): Promise<Coordinate | null> {
 /**
  * Get routing data between two points using OSRM
  */
-export async function getRoute(start: Coordinate, end: Coordinate): Promise<RouteData | null> {
+export async function getRoute(
+  start: Coordinate, 
+  end: Coordinate, 
+  liveCrime: SafetyIncident[] = [], 
+  liveCalls: SafetyIncident[] = []
+): Promise<RouteData | null> {
   try {
     const response = await fetch(
       `https://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson`
@@ -69,10 +76,24 @@ export async function getRoute(start: Coordinate, end: Coordinate): Promise<Rout
       // Convert GeoJSON coordinates [lng, lat] to Leaflet [lat, lng]
       const path: [number, number][] = route.geometry.coordinates.map((coord: [number, number]) => [coord[1], coord[0]]);
       
-      // Vibe-coded safety risk generation
-      // In a real app, this would query a safety database along the path
-      // For the hackathon, we generate plausible risks based on the route properties
-      const seed = Math.random();
+      // Calculate risks based on live data proximity
+      let crimeRisk = 10;
+      let emergencyRisk = 10;
+      
+      path.forEach(([lat, lng]) => {
+        // Check crime proximity (within ~500m)
+        liveCrime.forEach(c => {
+          const dist = Math.sqrt(Math.pow(c.location[0] - lat, 2) + Math.pow(c.location[1] - lng, 2));
+          if (dist < 0.005) crimeRisk += 2;
+        });
+        
+        // Check 911 calls proximity
+        liveCalls.forEach(c => {
+          const dist = Math.sqrt(Math.pow(c.location[0] - lat, 2) + Math.pow(c.location[1] - lng, 2));
+          if (dist < 0.005) emergencyRisk += 3;
+        });
+      });
+
       return {
         id: `dynamic-${Date.now()}`,
         name: 'SafeRoute Dynamic',
@@ -80,10 +101,10 @@ export async function getRoute(start: Coordinate, end: Coordinate): Promise<Rout
         distance: parseFloat(distanceKm),
         path,
         baseRisks: {
-          crime: Math.floor(seed * 40) + 10,
+          crime: Math.min(crimeRisk, 100),
           weather: Math.floor(Math.random() * 20) + 5,
           flood: Math.floor(Math.random() * 15) + 2,
-          emergency: Math.floor(Math.random() * 50) + 40
+          emergency: Math.min(emergencyRisk, 100)
         }
       };
     }
@@ -96,24 +117,49 @@ export async function getRoute(start: Coordinate, end: Coordinate): Promise<Rout
 
 /**
  * Generate an alternative "Standard" route for comparison
- * (Simulated by adding a slight detour or using a different OSRM profile if available)
  */
-export async function getAlternativeRoute(start: Coordinate, end: Coordinate): Promise<RouteData | null> {
-  // For simplicity, we'll just fetch the same route but give it different "vibe" risks
-  // and maybe a slightly longer time to simulate a "standard" vs "safe" comparison
-  const baseRoute = await getRoute(start, end);
+export async function getAlternativeRoute(
+  start: Coordinate, 
+  end: Coordinate,
+  liveCrime: SafetyIncident[] = [], 
+  liveCalls: SafetyIncident[] = []
+): Promise<RouteData | null> {
+  const baseRoute = await getRoute(start, end, liveCrime, liveCalls);
   if (!baseRoute) return null;
   
   return {
     ...baseRoute,
     id: `alt-${Date.now()}`,
     name: 'Standard Route',
-    time: `${parseInt(baseRoute.time) - 2} min`, // Standard is often faster but less safe
+    time: `${parseInt(baseRoute.time) - 2} min`,
     baseRisks: {
-      crime: baseRoute.baseRisks.crime + 25,
+      crime: Math.min(baseRoute.baseRisks.crime + 20, 100),
       weather: baseRoute.baseRisks.weather + 5,
       flood: baseRoute.baseRisks.flood + 10,
-      emergency: baseRoute.baseRisks.emergency - 20
+      emergency: Math.min(baseRoute.baseRisks.emergency + 10, 100)
     }
   };
+}
+
+/**
+ * Reverse geocode coordinates to get an address using Nominatim
+ */
+export async function reverseGeocode(lat: number, lng: number): Promise<{ name?: string; address?: string } | null> {
+  try {
+    const response = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
+    );
+    const data = await response.json();
+    
+    if (data) {
+      return {
+        name: data.name || data.display_name.split(',')[0],
+        address: data.display_name
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error('Reverse geocoding error:', error);
+    return null;
+  }
 }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, Polygon, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { cn } from '../lib/utils';
@@ -29,6 +29,9 @@ interface MapViewProps {
     resources: boolean;
   };
   alerts?: any[];
+  crimePoints?: any[];
+  emergencyResources?: any[];
+  floodZones?: any[];
   focusedLocation?: [number, number] | null;
   onMapClick?: (latlng: [number, number]) => void;
 }
@@ -58,22 +61,18 @@ function ChangeView({ center, focusedLocation }: { center: [number, number], foc
   return null;
 }
 
-export default function MapView({ center, routes, selectedRouteIndex, layers, alerts = [], focusedLocation, onMapClick }: MapViewProps) {
-  // Mock data for layers
-  const [crimePoints] = useState([
-    { pos: [32.3668, -86.3000], type: 'Theft' },
-    { pos: [32.3770, -86.3100], type: 'Vandalism' },
-    { pos: [32.3500, -86.2800], type: 'Theft' },
-  ]);
-
-  const [emergencyResources] = useState([
-    { id: 'h1', pos: [32.3792, -86.3077], name: 'Baptist Medical Center South', type: 'hospital' },
-    { id: 'h2', pos: [32.3450, -86.2850], name: 'Jackson Hospital', type: 'hospital' },
-    { id: 'p1', pos: [32.3615, -86.2995], name: 'Montgomery Police Dept', type: 'police' },
-    { id: 's1', pos: [32.3850, -86.2500], name: 'Emergency Shelter A', type: 'shelter' },
-    { id: 's2', pos: [32.3550, -86.3200], name: 'Community Center Shelter', type: 'shelter' },
-  ]);
-
+export default function MapView({ 
+  center, 
+  routes, 
+  selectedRouteIndex, 
+  layers, 
+  alerts = [], 
+  crimePoints = [],
+  emergencyResources = [],
+  floodZones = [],
+  focusedLocation, 
+  onMapClick 
+}: MapViewProps) {
   return (
     <div className="w-full h-full relative">
       <MapContainer 
@@ -110,6 +109,24 @@ export default function MapView({ center, routes, selectedRouteIndex, layers, al
           </Marker>
         ))}
 
+        {/* Flood Zones Layer */}
+        {layers.flood && floodZones.map((zone, i) => (
+          zone.geometry && zone.geometry.rings && zone.geometry.rings.map((ring: any, j: number) => (
+            <Polygon
+              key={`flood-${i}-${j}`}
+              positions={ring.map((coord: [number, number]) => [coord[1], coord[0]])}
+              pathOptions={{
+                fillColor: '#3b82f6',
+                fillOpacity: 0.3,
+                color: '#2563eb',
+                weight: 1
+              }}
+            >
+              <Popup>Flood Zone: {zone.type}</Popup>
+            </Polygon>
+          ))
+        ))}
+
         {/* Emergency Resources Layer */}
         {layers.resources && emergencyResources.map((r) => (
           <Marker 
@@ -126,6 +143,8 @@ export default function MapView({ center, routes, selectedRouteIndex, layers, al
                 ? '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>'
                 : r.type === 'police'
                 ? '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>'
+                : r.type === 'fire'
+                ? '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.5 4 6.5 2 2 3 5.5 3 5.5s-1 1-4 1c-3 0-4-1-4-1Z"/><path d="M15.8 19.1c-1.1.8-2.7 1.4-4.3 1.4-4.6 0-8.3-3.7-8.3-8.3 0-2.5 1.1-4.7 2.8-6.2"/></svg>'
                 : '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>'
             })}
           >
