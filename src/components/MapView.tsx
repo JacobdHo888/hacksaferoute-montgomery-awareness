@@ -29,16 +29,24 @@ interface MapViewProps {
     resources: boolean;
   };
   alerts?: any[];
-  userLocation?: [number, number];
+  focusedLocation?: [number, number] | null;
 }
 
-function ChangeView({ center }: { center: [number, number] }) {
+function ChangeView({ center, focusedLocation }: { center: [number, number], focusedLocation?: [number, number] | null }) {
   const map = useMap();
-  map.setView(center, map.getZoom());
+  useEffect(() => {
+    if (focusedLocation) {
+      map.flyTo(focusedLocation, 16, {
+        duration: 1.5
+      });
+    } else {
+      map.setView(center, map.getZoom());
+    }
+  }, [focusedLocation, center, map]);
   return null;
 }
 
-export default function MapView({ center, routes, selectedRouteIndex, layers, alerts = [], userLocation }: MapViewProps) {
+export default function MapView({ center, routes, selectedRouteIndex, layers, alerts = [], focusedLocation }: MapViewProps) {
   // Mock data for layers
   const [crimePoints] = useState([
     { pos: [32.3668, -86.3000], type: 'Theft' },
@@ -47,9 +55,11 @@ export default function MapView({ center, routes, selectedRouteIndex, layers, al
   ]);
 
   const [emergencyResources] = useState([
-    { pos: [32.3792, -86.3077], name: 'Baptist Medical Center South' },
-    { pos: [32.3615, -86.2995], name: 'Montgomery Police Dept' },
-    { pos: [32.3850, -86.2500], name: 'Emergency Shelter A' },
+    { id: 'h1', pos: [32.3792, -86.3077], name: 'Baptist Medical Center South', type: 'hospital' },
+    { id: 'h2', pos: [32.3450, -86.2850], name: 'Jackson Hospital', type: 'hospital' },
+    { id: 'p1', pos: [32.3615, -86.2995], name: 'Montgomery Police Dept', type: 'police' },
+    { id: 's1', pos: [32.3850, -86.2500], name: 'Emergency Shelter A', type: 'shelter' },
+    { id: 's2', pos: [32.3550, -86.3200], name: 'Community Center Shelter', type: 'shelter' },
   ]);
 
   return (
@@ -60,7 +70,7 @@ export default function MapView({ center, routes, selectedRouteIndex, layers, al
         scrollWheelZoom={true}
         className="z-0"
       >
-        <ChangeView center={center} />
+        <ChangeView center={center} focusedLocation={focusedLocation} />
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -88,12 +98,30 @@ export default function MapView({ center, routes, selectedRouteIndex, layers, al
         ))}
 
         {/* Emergency Resources Layer */}
-        {layers.resources && emergencyResources.map((r, i) => (
-          <Marker key={`res-${i}`} position={r.pos as [number, number]} icon={L.divIcon({
-            className: 'bg-blue-500 border-2 border-white rounded-lg w-8 h-8 flex items-center justify-center shadow-lg',
-            html: '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>'
-          })}>
-            <Popup>{r.name}</Popup>
+        {layers.resources && emergencyResources.map((r) => (
+          <Marker 
+            key={r.id} 
+            position={r.pos as [number, number]} 
+            icon={L.divIcon({
+              className: cn(
+                'border-2 border-white rounded-lg w-8 h-8 flex items-center justify-center shadow-lg transition-all',
+                focusedLocation && focusedLocation[0] === r.pos[0] && focusedLocation[1] === r.pos[1] 
+                  ? 'bg-red-500 scale-125 z-[2000]' 
+                  : 'bg-blue-500'
+              ),
+              html: r.type === 'hospital' 
+                ? '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>'
+                : r.type === 'police'
+                ? '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>'
+                : '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>'
+            })}
+          >
+            <Popup>
+              <div className="p-1">
+                <div className="font-bold text-sm">{r.name}</div>
+                <div className="text-[10px] text-slate-500 uppercase mt-1">{r.type}</div>
+              </div>
+            </Popup>
           </Marker>
         ))}
 
@@ -124,19 +152,6 @@ export default function MapView({ center, routes, selectedRouteIndex, layers, al
             </Popup>
           </Marker>
         ))}
-
-        {/* User Location Marker */}
-        {userLocation && (
-          <Marker position={userLocation} icon={L.divIcon({
-            className: 'relative flex h-6 w-6',
-            html: `
-              <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-              <span class="relative inline-flex rounded-full h-6 w-6 bg-blue-600 border-2 border-white shadow-lg"></span>
-            `
-          })}>
-            <Popup>You are here</Popup>
-          </Marker>
-        )}
 
         {/* Markers for Start/End of selected route */}
         {routes[selectedRouteIndex] && (

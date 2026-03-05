@@ -4,7 +4,8 @@ import {
   Shield, MapPin, Navigation, Search, 
   Layers, AlertTriangle, CloudRain, 
   Wind, Activity, Info, ChevronRight,
-  Menu, X, Sparkles, Clock, TrendingUp
+  Menu, X, Sparkles, Clock, TrendingUp,
+  Phone, PlusSquare, Home, Share2
 } from 'lucide-react';
 import MapView from './MapView';
 import { getSafetyExplanation } from '../services/gemini';
@@ -92,6 +93,14 @@ const MOCK_ALERTS: SafetyAlert[] = [
   }
 ];
 
+const EMERGENCY_RESOURCES = [
+  { id: 'h1', pos: [32.3792, -86.3077], name: 'Baptist Medical Center South', type: 'hospital' },
+  { id: 'h2', pos: [32.3450, -86.2850], name: 'Jackson Hospital', type: 'hospital' },
+  { id: 'p1', pos: [32.3615, -86.2995], name: 'Montgomery Police Dept', type: 'police' },
+  { id: 's1', pos: [32.3850, -86.2500], name: 'Emergency Shelter A', type: 'shelter' },
+  { id: 's2', pos: [32.3550, -86.3200], name: 'Community Center Shelter', type: 'shelter' },
+];
+
 export default function Dashboard() {
   const [start, setStart] = useState('My Location');
   const [dest, setDest] = useState('Baptist Medical Center South');
@@ -99,6 +108,7 @@ export default function Dashboard() {
   const [isSearching, setIsSearching] = useState(false);
   const [aiExplanation, setAiExplanation] = useState<string | null>(null);
   const [isLoadingAi, setIsLoadingAi] = useState(false);
+  const [focusedLocation, setFocusedLocation] = useState<[number, number] | null>(null);
   const [layers, setLayers] = useState({
     crime: true,
     calls: false,
@@ -134,6 +144,7 @@ export default function Dashboard() {
   const handleSearch = async () => {
     setIsSearching(true);
     setIsLoadingAi(true);
+    setFocusedLocation(null);
     // Simulate API delay
     await new Promise(r => setTimeout(r, 1500));
     
@@ -141,6 +152,24 @@ export default function Dashboard() {
     setAiExplanation(explanation || "No explanation available.");
     setIsLoadingAi(false);
     setIsSearching(false);
+  };
+
+  const findNearest = (type: string) => {
+    // Current user location (mocked as route start)
+    const userLoc = routes[selectedRouteIdx].path[0];
+    
+    const filtered = EMERGENCY_RESOURCES.filter(r => r.type === type);
+    if (filtered.length === 0) return;
+
+    // Simple Euclidean distance for mock purposes
+    const nearest = filtered.reduce((prev, curr) => {
+      const distPrev = Math.sqrt(Math.pow(prev.pos[0] - userLoc[0], 2) + Math.pow(prev.pos[1] - userLoc[1], 2));
+      const distCurr = Math.sqrt(Math.pow(curr.pos[0] - userLoc[0], 2) + Math.pow(curr.pos[1] - userLoc[1], 2));
+      return distPrev < distCurr ? prev : curr;
+    });
+
+    setFocusedLocation(nearest.pos as [number, number]);
+    setLayers(prev => ({ ...prev, resources: true }));
   };
 
   useEffect(() => {
@@ -357,6 +386,7 @@ export default function Dashboard() {
           selectedRouteIndex={selectedRouteIdx}
           layers={layers}
           alerts={MOCK_ALERTS}
+          focusedLocation={focusedLocation}
         />
 
         {/* Floating Header */}
@@ -376,6 +406,48 @@ export default function Dashboard() {
 
       {/* Right Panel - AI Explanation */}
       <aside className="w-96 bg-white border-l border-slate-200 flex flex-col z-10 shadow-xl">
+        {/* Emergency Quick Actions */}
+        <div className="p-6 border-b border-slate-100 bg-red-50/30">
+          <div className="flex items-center gap-2 mb-4 text-red-600">
+            <AlertTriangle className="w-4 h-4" />
+            <h3 className="font-bold text-xs uppercase tracking-wider">Emergency Quick Actions</h3>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <button 
+              onClick={() => window.location.href = 'tel:911'}
+              className="flex items-center gap-2 bg-red-600 text-white p-3 rounded-xl hover:bg-red-700 transition-all shadow-sm group"
+            >
+              <Phone className="w-4 h-4 group-hover:animate-shake" />
+              <span className="text-xs font-bold">Call 911</span>
+            </button>
+            <button 
+              className="flex items-center gap-2 bg-civic-blue text-white p-3 rounded-xl hover:bg-slate-800 transition-all shadow-sm"
+              onClick={() => findNearest('hospital')}
+            >
+              <PlusSquare className="w-4 h-4" />
+              <span className="text-xs font-bold">Hospital</span>
+            </button>
+            <button 
+              className="flex items-center gap-2 bg-safety-green text-white p-3 rounded-xl hover:bg-emerald-700 transition-all shadow-sm"
+              onClick={() => findNearest('shelter')}
+            >
+              <Home className="w-4 h-4" />
+              <span className="text-xs font-bold">Shelter</span>
+            </button>
+            <button 
+              className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 p-3 rounded-xl hover:bg-slate-50 transition-all shadow-sm"
+              onClick={() => {
+                const url = window.location.href;
+                navigator.clipboard.writeText(url);
+                alert('Location link copied to clipboard!');
+              }}
+            >
+              <Share2 className="w-4 h-4" />
+              <span className="text-xs font-bold">Share</span>
+            </button>
+          </div>
+        </div>
+
         <div className="p-6 border-b border-slate-100">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2 text-civic-blue">
