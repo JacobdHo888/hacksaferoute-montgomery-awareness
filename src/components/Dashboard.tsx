@@ -350,7 +350,7 @@ export default function Dashboard() {
               <div className="h-20 bg-slate-100 rounded w-full" />
             </div>
           ) : (
-            <div className="prose prose-slate prose-sm max-w-none">
+            <div className="max-w-none">
               <div className="markdown-body">
                 <ReactMarkdown>
                   {aiExplanation || "Select a route to see AI safety insights."}
