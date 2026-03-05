@@ -12,6 +12,7 @@ import { getSafetyExplanation } from '../services/gemini';
 import ReactMarkdown from 'react-markdown';
 import { cn } from '../lib/utils';
 import SafetyTrends from './SafetyTrends';
+import { geocode, getRoute, getAlternativeRoute, RouteData } from '../services/navigation';
 
 // Mock Data for Routes
 const MOCK_ROUTES_BASE = [
@@ -103,14 +104,17 @@ const EMERGENCY_RESOURCES = [
 ];
 
 export default function Dashboard() {
-  const [start, setStart] = useState('My Location');
-  const [dest, setDest] = useState('Baptist Medical Center South');
-  const [selectedRouteIdx, setSelectedRouteIdx] = useState(1);
+  const [start, setStart] = useState('100 Dexter Ave, Montgomery, AL');
+  const [dest, setDest] = useState('Baptist Medical Center South, Montgomery, AL');
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null);
+  const [selectedRouteIdx, setSelectedRouteIdx] = useState(0);
   const [isSearching, setIsSearching] = useState(false);
   const [aiExplanation, setAiExplanation] = useState<string | null>(null);
   const [isLoadingAi, setIsLoadingAi] = useState(false);
   const [focusedLocation, setFocusedLocation] = useState<[number, number] | null>(null);
   const [activeTab, setActiveTab] = useState<'insight' | 'trends'>('insight');
+  const [dynamicRoutes, setDynamicRoutes] = useState<RouteData[]>([]);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([32.3668, -86.3000]);
   const [layers, setLayers] = useState({
     crime: true,
     calls: false,
@@ -138,22 +142,70 @@ export default function Dashboard() {
     return Math.round(crimeScore + weatherScore + floodScore + emergencyScore);
   };
 
-  const routes = MOCK_ROUTES_BASE.map(route => ({
-    ...route,
-    score: calculateScore(route.baseRisks)
-  }));
+  const routes = dynamicRoutes.length > 0 
+    ? dynamicRoutes.map((route, idx) => ({
+        ...route,
+        recommended: idx === 0, // Assume first is safer for now
+        risks: idx === 0 ? ['Low Incident Density'] : ['Moderate 911 Activity', 'Construction'],
+        score: calculateScore(route.baseRisks)
+      }))
+    : MOCK_ROUTES_BASE.map(route => ({
+        ...route,
+        score: calculateScore(route.baseRisks)
+      }));
 
   const handleSearch = async () => {
     setIsSearching(true);
     setIsLoadingAi(true);
     setFocusedLocation(null);
-    // Simulate API delay
-    await new Promise(r => setTimeout(r, 1500));
     
-    const explanation = await getSafetyExplanation(routes[selectedRouteIdx]);
-    setAiExplanation(explanation || "No explanation available.");
-    setIsLoadingAi(false);
-    setIsSearching(false);
+    try {
+      let startCoord = userLocation ? { lat: userLocation[0], lng: userLocation[1] } : null;
+      if (!startCoord || start !== 'My Location') {
+        startCoord = await geocode(start);
+      }
+      
+      const endCoord = await geocode(dest);
+      
+      if (startCoord && endCoord) {
+        const [safe, standard] = await Promise.all([
+          getRoute(startCoord, endCoord),
+          getAlternativeRoute(startCoord, endCoord)
+        ]);
+        
+        if (safe && standard) {
+          setDynamicRoutes([safe, standard]);
+          setMapCenter([startCoord.lat, startCoord.lng]);
+          setSelectedRouteIdx(0);
+        }
+      } else {
+        alert('Could not find one or more locations. Please try a more specific address in Montgomery.');
+      }
+    } catch (error) {
+      console.error('Search error:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const useMyLocation = () => {
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported by your browser');
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setUserLocation([latitude, longitude]);
+        setStart('My Location');
+        setMapCenter([latitude, longitude]);
+      },
+      (error) => {
+        console.error('Geolocation error:', error);
+        alert('Unable to retrieve your location. Please check your browser permissions.');
+      }
+    );
   };
 
   const findNearest = (type: string) => {
@@ -174,9 +226,22 @@ export default function Dashboard() {
     setLayers(prev => ({ ...prev, resources: true }));
   };
 
+  const fetchAiInsight = async () => {
+    if (!routes[selectedRouteIdx]) return;
+    setIsLoadingAi(true);
+    const explanation = await getSafetyExplanation(routes[selectedRouteIdx]);
+    setAiExplanation(explanation || "No explanation available.");
+    setIsLoadingAi(false);
+  };
+
   useEffect(() => {
+    fetchAiInsight();
+  }, [selectedRouteIdx, dynamicRoutes]);
+
+  useEffect(() => {
+    // Initial search
     handleSearch();
-  }, [selectedRouteIdx]);
+  }, []);
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden font-sans">
@@ -196,10 +261,20 @@ export default function Dashboard() {
               <input 
                 type="text" 
                 value={start}
-                onChange={(e) => setStart(e.target.value)}
+                onChange={(e) => {
+                  setStart(e.target.value);
+                  if (e.target.value !== 'My Location') setUserLocation(null);
+                }}
                 placeholder="Starting Point"
-                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-civic-blue/20 focus:border-civic-blue outline-none transition-all"
+                className="w-full pl-10 pr-12 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-civic-blue/20 focus:border-civic-blue outline-none transition-all"
               />
+              <button 
+                onClick={useMyLocation}
+                className="absolute right-2 top-2 p-1 text-civic-blue hover:bg-blue-50 rounded-lg transition-colors"
+                title="Use My Location"
+              >
+                <Navigation className="w-4 h-4" />
+              </button>
               <div className="absolute left-5 top-10 w-0.5 h-4 bg-slate-200" />
             </div>
             <div className="relative">
@@ -383,7 +458,7 @@ export default function Dashboard() {
       {/* Main Content - Map */}
       <main className="flex-1 relative">
         <MapView 
-          center={[32.3668, -86.3000]} 
+          center={mapCenter} 
           routes={routes} 
           selectedRouteIndex={selectedRouteIdx}
           layers={layers}
