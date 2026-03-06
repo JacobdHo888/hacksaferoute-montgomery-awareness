@@ -101,7 +101,7 @@ export default function MapView({
 
         {/* Crime Layer */}
         {layers.crime && crimePoints.map((p, i) => (
-          <Marker key={`crime-${i}`} position={p.pos as [number, number]} icon={L.divIcon({
+          <Marker key={`crime-${i}`} position={p.location as [number, number]} icon={L.divIcon({
             className: 'bg-red-500/20 border-2 border-red-500 rounded-full w-6 h-6 flex items-center justify-center',
             html: '<div class="w-2 h-2 bg-red-500 rounded-full"></div>'
           })}>
@@ -131,11 +131,11 @@ export default function MapView({
         {layers.resources && emergencyResources.map((r) => (
           <Marker 
             key={r.id} 
-            position={r.pos as [number, number]} 
+            position={r.location as [number, number]} 
             icon={L.divIcon({
               className: cn(
                 'border-2 border-white rounded-lg w-8 h-8 flex items-center justify-center shadow-lg transition-all',
-                focusedLocation && focusedLocation[0] === r.pos[0] && focusedLocation[1] === r.pos[1] 
+                focusedLocation && focusedLocation[0] === r.location[0] && focusedLocation[1] === r.location[1] 
                   ? 'bg-red-500 scale-125 z-[2000]' 
                   : 'bg-blue-500'
               ),
@@ -203,16 +203,26 @@ export default function MapView({
             <span>Selected Route</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-red-500" />
+            <div className="w-4 h-4 rounded-full bg-red-500/20 border border-red-500 flex items-center justify-center">
+              <div className="w-1 h-1 bg-red-500 rounded-full" />
+            </div>
             <span>Crime Activity</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-lg bg-blue-500" />
+            <div className="w-4 h-4 rounded bg-blue-500 border border-white flex items-center justify-center shadow-sm">
+              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
             <span>Emergency Resource</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-amber-500 animate-pulse" />
+            <div className="w-4 h-4 rounded-full bg-amber-500 border border-white flex items-center justify-center shadow-sm animate-pulse">
+              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
             <span>Active Safety Alert</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded bg-blue-500/30 border border-blue-600" />
+            <span>Flood Zone (FEMA)</span>
           </div>
         </div>
       </div>
