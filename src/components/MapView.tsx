@@ -188,8 +188,41 @@ export default function MapView({
         {/* Markers for Start/End of selected route */}
         {routes[selectedRouteIndex] && (
           <>
-            <Marker position={routes[selectedRouteIndex].path[0]} />
-            <Marker position={routes[selectedRouteIndex].path[routes[selectedRouteIndex].path.length - 1]} />
+            <Marker 
+              position={routes[selectedRouteIndex].path[0]} 
+              icon={L.divIcon({
+                className: 'w-8 h-8 flex items-center justify-center',
+                html: `
+                  <div class="relative flex items-center justify-center">
+                    <div class="absolute w-8 h-8 bg-safety-green/20 rounded-full animate-ping"></div>
+                    <div class="w-6 h-6 bg-safety-green border-2 border-white rounded-full shadow-lg flex items-center justify-center z-10">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    </div>
+                  </div>
+                `
+              })}
+            >
+              <Popup>
+                <div className="font-bold text-xs">Start Point</div>
+              </Popup>
+            </Marker>
+            <Marker 
+              position={routes[selectedRouteIndex].path[routes[selectedRouteIndex].path.length - 1]} 
+              icon={L.divIcon({
+                className: 'w-8 h-8 flex items-center justify-center',
+                html: `
+                  <div class="relative flex items-center justify-center">
+                    <div class="w-6 h-6 bg-civic-blue border-2 border-white rounded-lg shadow-lg flex items-center justify-center z-10">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+                    </div>
+                  </div>
+                `
+              })}
+            >
+              <Popup>
+                <div className="font-bold text-xs">Destination</div>
+              </Popup>
+            </Marker>
           </>
         )}
       </MapContainer>
@@ -199,8 +232,20 @@ export default function MapView({
         <div className="font-bold text-slate-900 mb-2">Map Legend</div>
         <div className="space-y-2">
           <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded-full bg-safety-green border-2 border-white shadow-sm flex items-center justify-center">
+              <div className="w-1.5 h-1.5 bg-white rounded-full" />
+            </div>
+            <span>Route Start</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 rounded-lg bg-civic-blue border-2 border-white shadow-sm flex items-center justify-center">
+              <div className="w-1.5 h-1.5 bg-white rounded-full" />
+            </div>
+            <span>Destination</span>
+          </div>
+          <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-civic-blue" />
-            <span>Selected Route</span>
+            <span>Route Path</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-4 h-4 rounded-full bg-red-500/20 border border-red-500 flex items-center justify-center">
