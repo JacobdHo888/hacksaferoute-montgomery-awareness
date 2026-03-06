@@ -532,7 +532,7 @@ export default function Dashboard() {
       </main>
 
       {/* Right Panel - AI Explanation */}
-      <aside className="w-96 bg-white border-l border-slate-200 flex flex-col z-10 shadow-xl">
+      <aside className="hidden lg:flex w-80 xl:w-96 bg-white border-l border-slate-200 flex-col z-10 shadow-xl">
         {/* Emergency Quick Actions */}
         <div className="p-6 border-b border-slate-100 bg-red-50/30">
           <div className="flex items-center gap-2 mb-4 text-red-600">
@@ -586,18 +586,18 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 mb-6">
-            <div className="text-[10px] font-bold uppercase text-slate-400 mb-2">Safety Score</div>
-            <div className="flex items-end gap-2">
+          <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 mb-4">
+            <div className="text-[9px] font-bold uppercase text-slate-400 mb-1">Safety Score</div>
+            <div className="flex items-end gap-1.5">
               <span className={cn(
-                "text-5xl font-bold",
+                "text-3xl font-bold",
                 routes[selectedRouteIdx].score > 80 ? "text-safety-green" : "text-safety-yellow"
               )}>
                 {routes[selectedRouteIdx].score}
               </span>
-              <span className="text-slate-400 font-bold mb-1">/ 100</span>
+              <span className="text-slate-400 font-bold text-xs mb-1">/ 100</span>
             </div>
-            <div className="mt-4 h-2 w-full bg-slate-200 rounded-full overflow-hidden">
+            <div className="mt-3 h-1.5 w-full bg-slate-200 rounded-full overflow-hidden">
               <motion.div 
                 initial={{ width: 0 }}
                 animate={{ width: `${routes[selectedRouteIdx].score}%` }}
@@ -610,36 +610,39 @@ export default function Dashboard() {
           </div>
 
           {/* Tab Switcher */}
-          <div className="flex p-1 bg-slate-100 rounded-xl mb-2">
+          <div className="flex p-1 bg-slate-100 rounded-xl mb-1 sticky top-0 z-20 shadow-sm border border-slate-200">
             <button 
               onClick={() => setActiveTab('insight')}
               className={cn(
-                "flex-1 py-2 px-3 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-2",
-                activeTab === 'insight' ? "bg-white text-civic-blue shadow-sm" : "text-slate-500 hover:text-slate-700"
+                "flex-1 py-2.5 px-2 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1.5",
+                activeTab === 'insight' ? "bg-white text-civic-blue shadow-md border border-slate-100" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
               )}
             >
-              <Sparkles className="w-3 h-3" />
-              AI Insight
+              <Sparkles className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">AI Insight</span>
+              <span className="sm:hidden">Insight</span>
             </button>
             <button 
               onClick={() => setActiveTab('trends')}
               className={cn(
-                "flex-1 py-2 px-3 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-2",
-                activeTab === 'trends' ? "bg-white text-civic-blue shadow-sm" : "text-slate-500 hover:text-slate-700"
+                "flex-1 py-2.5 px-2 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1.5",
+                activeTab === 'trends' ? "bg-white text-civic-blue shadow-md border border-slate-100" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
               )}
             >
-              <Activity className="w-3 h-3" />
-              City Trends
+              <Activity className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">City Trends</span>
+              <span className="sm:hidden">Trends</span>
             </button>
             <button 
               onClick={() => setActiveTab('guide')}
               className={cn(
-                "flex-1 py-2 px-3 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-2",
-                activeTab === 'guide' ? "bg-white text-civic-blue shadow-sm" : "text-slate-500 hover:text-slate-700"
+                "flex-1 py-2.5 px-2 rounded-lg text-[11px] font-bold transition-all flex items-center justify-center gap-1.5",
+                activeTab === 'guide' ? "bg-white text-civic-blue shadow-md border border-slate-100" : "text-slate-500 hover:text-slate-700 hover:bg-slate-50"
               )}
             >
-              <BookOpen className="w-3 h-3" />
-              Guide
+              <BookOpen className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Guide</span>
+              <span className="sm:hidden">Guide</span>
             </button>
           </div>
         </div>
